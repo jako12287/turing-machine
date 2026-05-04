@@ -28,6 +28,9 @@ function App() {
   const [logs, setLogs] = useState<StepLog[]>([]);
   const [started, setStarted] = useState(false);
 
+  // 🔥 NUEVO: controla si estamos dentro de palabra
+  const [inWord, setInWord] = useState(false);
+
   const isFinished = state === "qf";
 
   const currentSymbol = useMemo(() => {
@@ -48,6 +51,7 @@ function App() {
     setWords(0);
     setLogs([]);
     setStarted(true);
+    setInWord(false); // 🔥 reinicia estado lógico
   };
 
   const resetMachine = () => {
@@ -57,69 +61,60 @@ function App() {
     setWords(0);
     setLogs([]);
     setStarted(false);
+    setInWord(false);
   };
 
-  const nextStep = () => {
-    if (!started || isFinished) return;
+const nextStep = () => {
+  if (!started || isFinished) return;
 
-    const symbol = tape[head] ?? BLANK;
-    const isBlank = symbol === BLANK;
-    const isSpace = symbol === " ";
-    const isLetter = !isBlank && !isSpace;
+  const symbol = tape[head] ?? BLANK;
+  const isBlank = symbol === BLANK;
+  const isSpace = symbol === " ";
+  const isLetter = !isBlank && !isSpace;
 
-    let nextState: MachineState = state;
-    let nextHead = head;
-    let nextWords = words;
-    let action = "";
+  let nextHead = head;
+  let nextWords = words;
+  let action = "";
 
-    if (state === "q0") {
-      if (isLetter) {
-        nextWords += 1;
-        nextState = "q1";
-        nextHead += 1;
-        action = "Detecta el inicio de una palabra, suma 1 y avanza";
-      } else if (isSpace) {
-        nextState = "q0";
-        nextHead += 1;
-        action = "Encuentra un espacio, lo ignora y avanza";
-      } else {
-        nextState = "qf";
-        action = "Llega al final de la cadena y termina el proceso";
-      }
+  if (isLetter) {
+    if (!inWord) {
+      nextWords += 1;
+      action = "Detecta inicio de palabra y suma 1";
+    } else {
+      action = "Sigue dentro de la palabra";
     }
 
-    if (state === "q1") {
-      if (isLetter) {
-        nextState = "q1";
-        nextHead += 1;
-        action = "Sigue dentro de la palabra y avanza";
-      } else if (isSpace) {
-        nextState = "q0";
-        nextHead += 1;
-        action = "Encuentra espacio, sale de la palabra y avanza";
-      } else {
-        nextState = "qf";
-        action = "Llega al final de la cadena y termina el proceso";
-      }
-    }
+    nextHead += 1;
+    setState("q1");
+    setInWord(true);
+  } else if (isSpace) {
+    action = "Encuentra espacio, separa palabras";
 
-    const newLog: StepLog = {
-      step: logs.length + 1,
-      state,
-      read: symbol,
-      action,
-      words: nextWords,
-    };
+    nextHead += 1;
+    setState("q0");
+    setInWord(false);
+  } else {
+    action = "Llega al final de la cadena y termina el proceso";
 
-    setLogs((prevLogs) => [newLog, ...prevLogs]);
-    setHead(nextHead);
-    setState(nextState);
-    setWords(nextWords);
+    setState("qf");
+  }
+
+  const newLog: StepLog = {
+    step: logs.length + 1,
+    state,
+    read: symbol,
+    action,
+    words: nextWords,
   };
+
+  setLogs((prevLogs) => [newLog, ...prevLogs]);
+  setHead(nextHead);
+  setWords(nextWords);
+};
 
   return (
     <main className="app">
-      <section className="hero" >
+      <section className="hero">
         <p className="eyebrow">Matemáticas discretas</p>
         <h1>Máquina de Turing para conteo de palabras</h1>
         <h2 className="description">
@@ -196,61 +191,6 @@ function App() {
             </div>
           )}
         </article>
-      </section>
-
-      <section className="card">
-        <h2>Tabla de estados</h2>
-
-        <div className="tableWrapper">
-          <table>
-            <thead>
-              <tr>
-                <th>Estado</th>
-                <th>Lee</th>
-                <th>Acción</th>
-                <th>Movimiento</th>
-                <th>Nuevo estado</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td>Buscando palabra</td>
-                <td>Letra</td>
-                <td>Cuenta nueva palabra</td>
-                <td>Derecha</td>
-                <td>Leyendo palabra</td>
-              </tr>
-              <tr>
-                <td>Buscando palabra</td>
-                <td>Espacio</td>
-                <td>Ignora espacio</td>
-                <td>Derecha</td>
-                <td>Buscando palabra</td>
-              </tr>
-              <tr>
-                <td>Leyendo palabra</td>
-                <td>Letra</td>
-                <td>Continúa en la palabra</td>
-                <td>Derecha</td>
-                <td>Leyendo palabra</td>
-              </tr>
-              <tr>
-                <td>Leyendo palabra</td>
-                <td>Espacio</td>
-                <td>Sale de la palabra</td>
-                <td>Derecha</td>
-                <td>Buscando palabra</td>
-              </tr>
-              <tr>
-                <td>—</td>
-                <td>□</td>
-                <td>Finaliza el proceso</td>
-                <td>Alto</td>
-                <td>Finalizado</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
       </section>
 
       <section className="card">
